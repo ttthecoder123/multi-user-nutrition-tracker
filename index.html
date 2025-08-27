@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Nutrition Tracker</title>
+
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .app-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: env(safe-area-inset-top, 15px) 15px env(safe-area-inset-bottom, 15px);
+            min-height: 100vh;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2a2a2a;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .auth-card {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-title {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            font-size: 16px;
+            color: #a0a0a0;
+            margin-bottom: 20px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 30px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 600;
+            color: #a0a0a0;
+        }
+
+        .auth-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            min-height: 52px;
+            background: #2a2a2a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0 16px;
+            color: #ffffff;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+            transform: scale(1.02);
+        }
+
+        .form-input::placeholder {
+            color: #666;
+        }
+
+        .auth-btn {
+            width: 100%;
+            min-height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 16px;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-btn:active {
+            transform: scale(0.98);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .social-divider {
+            text-align: center;
+            margin: 25px 0;
+            position: relative;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .social-divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .social-divider span {
+            background: #1a1a1a;
+            padding: 0 15px;
+        }
+
+        .social-btn {
+            width: 100%;
+            min-height: 52px;
+            background: #2a2a2a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .social-btn:hover {
+            background: #3a3a3a;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .social-btn:active {
+            transform: scale(0.98);
+        }
+
+        .forgot-password {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .forgot-password a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #667eea;
+        }
+
+        .remember-me label {
+            font-size: 14px;
+            color: #a0a0a0;
+            cursor: pointer;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            height: 40px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #a0a0a0;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fbbf24;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+            animation: none;
+        }
+
+        .status-dot.error {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .user-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            font-size: 11px;
+            color: #a0a0a0;
+            text-align: right;
+        }
+
+        .user-email {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            color: #ef4444;
+            font-size: 12px;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .logout-btn:active {
+            transform: scale(0.95);
+        }
+
+        .card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .daily-totals {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .total-item {
+            text-align: center;
+        }
+
+        .total-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .total-label {
+            font-size: 11px;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .remaining-amount {
+            font-size: 10px;
+            color: #667eea;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .remaining-amount.over {
+            color: #ef4444;
+        }
+
+        .remaining-amount.complete {
+            color: #10b981;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #2a2a2a;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            margin-top: 45px;
+        }
+
+        .app-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .date-display {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 15px;
+        }
+
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+
+        .form-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-steppers {
+            position: absolute;
+            right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stepper-btn {
+            width: 32px;
+            height: 22px;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 6px;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .stepper-btn:active {
+            background: rgba(102, 126, 234, 0.4);
+            transform: scale(0.95);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .meal-type-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a0a0a0' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            min-height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 16px;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .submit-btn.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .success-checkmark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 24px;
+            animation: checkmarkPop 0.5s ease forwards;
+        }
+
+        @keyframes checkmarkPop {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .settings-btn {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #667eea;
+            font-size: 16px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .settings-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .settings-btn:active {
+            transform: scale(0.95);
+        }
+
+        .close-settings-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #ef4444;
+            font-size: 16px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .close-settings-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .close-settings-btn:active {
+            transform: scale(0.95);
+        }
+
+        .goals-section {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .history-section {
+            margin-bottom: 20px;
+        }
+
+        .history-item {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            background: #3a3a3a;
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-time {
+            font-size: 11px;
+            color: #a0a0a0;
+        }
+
+        .history-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .history-macro {
+            text-align: center;
+        }
+
+        .history-macro-value {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .history-macro-label {
+            color: #a0a0a0;
+            margin-top: 2px;
+        }
+
+        .history-delete {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .history-item:hover .history-delete {
+            opacity: 1;
+        }
+
+        .favorites-section {
+            margin-bottom: 20px;
+        }
+
+        .favorites-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .favorite-btn {
+            background: #2a2a2a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 10px;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            min-height: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .favorite-btn:active {
+            transform: scale(0.95);
+            background: #3a3a3a;
+        }
+
+        .favorite-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .favorite-macros {
+            font-size: 10px;
+            color: #a0a0a0;
+            line-height: 1.2;
+        }
+
+        .delete-favorite {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .favorite-btn:hover .delete-favorite {
+            display: flex;
+        }
+
+        .add-favorite-btn {
+            width: 100%;
+            min-height: 44px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px dashed rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 15px;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 50px;
+            right: 15px;
+            z-index: 2000;
+            pointer-events: none;
+            max-width: 350px;
+        }
+
+        .toast {
+            background: #2a2a2a;
+            color: #ffffff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+            animation: slideInRight 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateX(100%);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success {
+            border-left: 3px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 3px solid #ef4444;
+        }
+
+        .toast.warning {
+            border-left: 3px solid #fbbf24;
+        }
+
+        .toast.info {
+            border-left: 3px solid #3b82f6;
+        }
+
+        .toast-icon {
+            font-size: 16px;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #ef4444;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 480px) {
+            .auth-container, .app-container {
+                padding: 15px;
+            }
+
+            .toast-container {
+                left: 15px;
+                right: 15px;
+            }
+
+            .auth-card {
+                padding: 25px;
+            }
+
+            .auth-title {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div style="font-size: 16px; color: #a0a0a0;">Loading...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Authentication Screen -->
+    <div class="auth-container hidden" id="authContainer">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1 class="auth-title">Nutrition Tracker</h1>
+                <p class="auth-subtitle">Track your daily nutrition with ease</p>
+                
+                <div class="auth-tabs">
+                    <div class="auth-tab active" onclick="showAuthForm('signin')">Sign In</div>
+                    <div class="auth-tab" onclick="showAuthForm('signup')">Sign Up</div>
+                </div>
+            </div>
+
+            <!-- Sign In Form -->
+            <form class="auth-form active" id="signinForm">
+                <div class="error-message hidden" id="signinError"></div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="signinEmail">Email</label>
+                    <input type="email" class="form-input" id="signinEmail" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="signinPassword">Password</label>
+                    <input type="password" class="form-input" id="signinPassword" placeholder="Enter your password" required>
+                </div>
+
+                <div class="remember-me">
+                    <input type="checkbox" id="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+
+                <button type="submit" class="auth-btn" id="signinBtn">Sign In</button>
+
+                <div class="forgot-password">
+                    <a href="#" onclick="showPasswordReset()">Forgot your password?</a>
+                </div>
+
+                <div class="social-divider">
+                    <span>or continue with</span>
+                </div>
+
+                <button type="button" class="social-btn" onclick="signInWithGoogle()">
+                    <span>🔍</span> Continue with Google
+                </button>
+
+                <button type="button" class="social-btn" onclick="signInWithApple()">
+                    <span>🍎</span> Continue with Apple
+                </button>
+            </form>
+
+            <!-- Sign Up Form -->
+            <form class="auth-form" id="signupForm">
+                <div class="error-message hidden" id="signupError"></div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="signupName">Full Name</label>
+                    <input type="text" class="form-input" id="signupName" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="signupEmail">Email</label>
+                    <input type="email" class="form-input" id="signupEmail" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="signupPassword">Password</label>
+                    <input type="password" class="form-input" id="signupPassword" placeholder="Create a password (min 6 characters)" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">Confirm Password</label>
+                    <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm your password" required>
+                </div>
+
+                <button type="submit" class="auth-btn" id="signupBtn">Create Account</button>
+
+                <div class="social-divider">
+                    <span>or continue with</span>
+                </div>
+
+                <button type="button" class="social-btn" onclick="signInWithGoogle()">
+                    <span>🔍</span> Continue with Google
+                </button>
+
+                <button type="button" class="social-btn" onclick="signInWithApple()">
+                    <span>🍎</span> Continue with Apple
+                </button>
+            </form>
+
+            <!-- Password Reset Form -->
+            <form class="auth-form" id="resetForm">
+                <div class="error-message hidden" id="resetError"></div>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h3 style="color: #ffffff; margin-bottom: 8px;">Reset Password</h3>
+                    <p style="color: #a0a0a0; font-size: 14px;">Enter your email to receive a reset link</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="resetEmail">Email</label>
+                    <input type="email" class="form-input" id="resetEmail" placeholder="Enter your email" required>
+                </div>
+
+                <button type="submit" class="auth-btn" id="resetBtn">Send Reset Link</button>
+
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="#" onclick="showAuthForm('signin')" style="color: #667eea; text-decoration: none; font-size: 14px;">Back to Sign In</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div class="app-container hidden" id="appContainer">
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="connection-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <div class="user-header">
+                <div class="user-info">
+                    <div class="user-email" id="userEmail"></div>
+                    <div id="userStatus">Signed in</div>
+                </div>
+                <button class="logout-btn" onclick="signOut()">Logout</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1 class="app-title">Nutrition Tracker</h1>
+            <div class="date-display" id="dateDisplay"></div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div></div>
+                <button type="button" class="settings-btn" onclick="toggleGoalsSettings()" title="Settings">⚙️</button>
+            </div>
+            
+            <div class="daily-totals">
+                <div class="total-item">
+                    <div class="total-value" id="totalCalories">0</div>
+                    <div class="total-label">Calories</div>
+                    <div class="remaining-amount" id="remainingCalories">2000 left</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="caloriesProgress"></div>
+                    </div>
+                </div>
+                <div class="total-item">
+                    <div class="total-value" id="totalProtein">0g</div>
+                    <div class="total-label">Protein</div>
+                    <div class="remaining-amount" id="remainingProtein">150g left</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="proteinProgress"></div>
+                    </div>
+                </div>
+                <div class="total-item">
+                    <div class="total-value" id="totalCarbs">0g</div>
+                    <div class="total-label">Carbs</div>
+                    <div class="remaining-amount" id="remainingCarbs">200g left</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="carbsProgress"></div>
+                    </div>
+                </div>
+                <div class="total-item">
+                    <div class="total-value" id="totalFat">0g</div>
+                    <div class="total-label">Fat</div>
+                    <div class="remaining-amount" id="remainingFat">65g left</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="fatProgress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goals Settings Section -->
+        <div class="goals-section hidden" id="goalsSection">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 class="section-title" style="margin-bottom: 0;">Daily Goals</h2>
+                    <button type="button" class="close-settings-btn" onclick="toggleGoalsSettings()">✕</button>
+                </div>
+                
+                <form id="goalsForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="goalCalories">Daily Calories</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="goalCalories" name="goalCalories" placeholder="2000" min="1000" max="5000" inputmode="numeric">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalCalories', 100)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalCalories', -100)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="goalProtein">Protein (g)</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="goalProtein" name="goalProtein" placeholder="150" min="50" max="300" step="5" inputmode="decimal">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalProtein', 10)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalProtein', -10)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="goalCarbs">Carbs (g)</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="goalCarbs" name="goalCarbs" placeholder="200" min="50" max="400" step="5" inputmode="decimal">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalCarbs', 25)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalCarbs', -25)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="goalFat">Fat (g)</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="goalFat" name="goalFat" placeholder="65" min="30" max="150" step="5" inputmode="decimal">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalFat', 5)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepGoalValue('goalFat', -5)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="saveGoalsBtn">💾 Save Goals</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2 class="section-title">Add Entry</h2>
+            <div class="card">
+                <form id="nutritionForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="calories">Calories</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="calories" name="calories" placeholder="0" min="0" max="5000" inputmode="numeric">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepValue('calories', 50)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepValue('calories', -50)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="protein">Protein (g)</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="protein" name="protein" placeholder="0" min="0" max="500" step="0.1" inputmode="decimal">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepValue('protein', 5)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepValue('protein', -5)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="carbs">Carbs (g)</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="carbs" name="carbs" placeholder="0" min="0" max="500" step="0.1" inputmode="decimal">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepValue('carbs', 5)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepValue('carbs', -5)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="fat">Fat (g)</label>
+                            <div class="form-input-wrapper">
+                                <input type="number" class="form-input" id="fat" name="fat" placeholder="0" min="0" max="500" step="0.1" inputmode="decimal">
+                                <div class="input-steppers">
+                                    <button type="button" class="stepper-btn" onclick="stepValue('fat', 5)">+</button>
+                                    <button type="button" class="stepper-btn" onclick="stepValue('fat', -5)">-</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="mealType">Meal Type</label>
+                        <select class="form-input meal-type-select" id="mealType" name="mealType">
+                            <option value="Breakfast">Breakfast</option>
+                            <option value="Lunch">Lunch</option>
+                            <option value="Dinner">Dinner</option>
+                            <option value="Snack">Snack</option>
+                            <option value="Protein Shake">Protein Shake</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="description">Description (Optional)</label>
+                        <input type="text" class="form-input" id="description" name="description" placeholder="e.g., Grilled chicken with vegetables">
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">Log Entry</button>
+
+                    <button type="button" class="add-favorite-btn" onclick="saveAsFavorite()">
+                        ⭐ Save as Favorite
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="favorites-section">
+            <h2 class="section-title">Favorites</h2>
+            <div class="favorites-grid" id="favoritesGrid">
+                <!-- Favorites will be loaded here -->
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h2 class="section-title">Today's Entries</h2>
+            <div id="historyContainer">
+                <!-- History will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // SUPABASE CONFIGURATION
+        // ============================================
+        const SUPABASE_URL = 'https://koldmwplesgeentwlgiy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvbGRtd3BsZXNnZWVudHdsZ2l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNzU5ODAsImV4cCI6MjA3MTg1MTk4MH0.StEjUCGxajV810SHIJU3zexNb_A7_G2Ii8UgEuy66gU';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Global state
+        let currentUser = null;
+        let DAILY_GOALS = { calories: 2000, protein: 150, carbs: 200, fat: 65 };
+        let dailyTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+        let todaysEntries = [];
+        let favorites = [];
+        let isConnected = false;
+        let toastCount = 0;
+
+        // DOM elements
+        const $ = (id) => document.getElementById(id);
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('Initializing Nutrition Tracker with Authentication...');
+            
+            // Check for existing session
+            await checkAuthStatus();
+        });
+
+        // ============================================
+        // AUTHENTICATION FUNCTIONS
+        // ============================================
+
+        async function checkAuthStatus() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    throw error;
+                }
+
+                if (session) {
+                    currentUser = session.user;
+                    await initializeApp();
+                } else {
+                    showAuthScreen();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                showAuthScreen();
+            }
+        }
+
+        function showAuthScreen() {
+            $('loadingScreen').classList.add('hidden');
+            $('authContainer').classList.remove('hidden');
+            $('appContainer').classList.add('hidden');
+        }
+
+        async function initializeApp() {
+            try {
+                // Hide auth screen, show app
+                $('loadingScreen').classList.add('hidden');
+                $('authContainer').classList.add('hidden');
+                $('appContainer').classList.remove('hidden');
+
+                // Update user info in header
+                $('userEmail').textContent = currentUser.email;
+
+                // Test database connection
+                await testSupabaseConnection();
+
+                // Load user data
+                await Promise.all([
+                    loadUserGoals(),
+                    loadTodaysTotals(),
+                    loadTodaysEntries(),
+                    loadFavorites()
+                ]);
+
+                // Setup UI
+                updateDateDisplay();
+                setupEventListeners();
+                setupRealtimeSubscriptions();
+
+                showToast('success', 'Welcome!', `Signed in as ${currentUser.email}`);
+            } catch (error) {
+                console.error('App initialization error:', error);
+                showToast('error', 'Error', 'Failed to initialize app');
+            }
+        }
+
+        function showAuthForm(formType) {
+            // Update tabs
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+
+            if (formType === 'signin') {
+                document.querySelector('.auth-tab').classList.add('active');
+                $('signinForm').classList.add('active');
+            } else if (formType === 'signup') {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                $('signupForm').classList.add('active');
+            } else if (formType === 'reset') {
+                $('resetForm').classList.add('active');
+            }
+
+            // Clear any error messages
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+        }
+
+        function showPasswordReset() {
+            showAuthForm('reset');
+        }
+
+        // Sign in with email/password
+        async function signInWithEmail(email, password) {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (error) throw error;
+            return data;
+        }
+
+        // Sign up with email/password
+        async function signUpWithEmail(email, password, fullName) {
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: fullName
+                    }
+                }
+            });
+
+            if (error) throw error;
+            return data;
+        }
+
+        // Password reset
+        async function resetPassword(email) {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin
+            });
+
+            if (error) throw error;
+        }
+
+        // Sign in with Google
+        async function signInWithGoogle() {
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin
+                    }
+                });
+
+                if (error) throw error;
+            } catch (error) {
+                console.error('Google sign in error:', error);
+                showToast('error', 'Sign In Failed', error.message);
+            }
+        }
+
+        // Sign in with Apple
+        async function signInWithApple() {
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'apple',
+                    options: {
+                        redirectTo: window.location.origin
+                    }
+                });
+
+                if (error) throw error;
+            } catch (error) {
+                console.error('Apple sign in error:', error);
+                showToast('error', 'Sign In Failed', error.message);
+            }
+        }
+
+        // Sign out
+        async function signOut() {
+            if (confirm('Are you sure you want to sign out?')) {
+                try {
+                    const { error } = await supabase.auth.signOut();
+                    if (error) throw error;
+                    
+                    currentUser = null;
+                    showAuthScreen();
+                    showToast('info', 'Signed Out', 'You have been signed out successfully');
+                } catch (error) {
+                    console.error('Sign out error:', error);
+                    showToast('error', 'Error', 'Failed to sign out');
+                }
+            }
+        }
+
+        // Setup auth event listeners
+        function setupEventListeners() {
+            // Sign in form
+            $('signinForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = $('signinEmail').value.trim();
+                const password = $('signinPassword').value;
+                const btn = $('signinBtn');
+                const errorEl = $('signinError');
+
+                if (!email || !password) {
+                    showError('signinError', 'Please fill in all fields');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Signing in...';
+                hideError('signinError');
+
+                try {
+                    const data = await signInWithEmail(email, password);
+                    currentUser = data.user;
+                    await initializeApp();
+                } catch (error) {
+                    console.error('Sign in error:', error);
+                    showError('signinError', error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Sign In';
+                }
+            });
+
+            // Sign up form
+            $('signupForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const name = $('signupName').value.trim();
+                const email = $('signupEmail').value.trim();
+                const password = $('signupPassword').value;
+                const confirmPassword = $('confirmPassword').value;
+                const btn = $('signupBtn');
+
+                if (!name || !email || !password || !confirmPassword) {
+                    showError('signupError', 'Please fill in all fields');
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    showError('signupError', 'Passwords do not match');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    showError('signupError', 'Password must be at least 6 characters');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Creating account...';
+                hideError('signupError');
+
+                try {
+                    const data = await signUpWithEmail(email, password, name);
+                    
+                    if (data.user && data.user.email_confirmed_at) {
+                        currentUser = data.user;
+                        await initializeApp();
+                    } else {
+                        showToast('info', 'Check Email', 'Please check your email to confirm your account');
+                        showAuthForm('signin');
+                    }
+                } catch (error) {
+                    console.error('Sign up error:', error);
+                    showError('signupError', error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
+                }
+            });
+
+            // Password reset form
+            $('resetForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = $('resetEmail').value.trim();
+                const btn = $('resetBtn');
+
+                if (!email) {
+                    showError('resetError', 'Please enter your email');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                hideError('resetError');
+
+                try {
+                    await resetPassword(email);
+                    showToast('success', 'Email Sent', 'Check your email for reset instructions');
+                    showAuthForm('signin');
+                } catch (error) {
+                    console.error('Password reset error:', error);
+                    showError('resetError', error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Send Reset Link';
+                }
+            });
+
+            // Nutrition form (if user is authenticated)
+            if (currentUser) {
+                setupNutritionEventListeners();
+            }
+
+            // Auth state listener
+            supabase.auth.onAuthStateChange((event, session) => {
+                console.log('Auth state changed:', event, session);
+                
+                if (event === 'SIGNED_IN') {
+                    currentUser = session.user;
+                    initializeApp();
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    showAuthScreen();
+                }
+            });
+        }
+
+        function showError(elementId, message) {
+            const el = $(elementId);
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function hideError(elementId) {
+            const el = $(elementId);
+            el.classList.add('hidden');
+            el.textContent = '';
+        }
+
+        // ============================================
+        // NUTRITION APP FUNCTIONS (User-Specific)
+        // ============================================
+
+        function setupNutritionEventListeners() {
+            // Goals form
+            const goalsForm = $('goalsForm');
+            if (goalsForm) {
+                goalsForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    saveUserGoals();
+                });
+            }
+
+            // Nutrition form
+            const nutritionForm = $('nutritionForm');
+            if (nutritionForm) {
+                nutritionForm.addEventListener('submit', handleFormSubmit);
+            }
+
+            // Input change handlers
+            ['calories', 'protein', 'carbs', 'fat'].forEach(field => {
+                const element = $(field);
+                if (element) {
+                    element.addEventListener('input', debounce(() => {
+                        updateMacroCalculation();
+                    }, 300));
+                }
+            });
+        }
+
+        async function testSupabaseConnection() {
+            try {
+                const { data, error } = await supabase
+                    .from('food_log')
+                    .select('count')
+                    .eq('user_id', currentUser.id)
+                    .limit(1);
+
+                if (error && error.code === 'PGRST116') {
+                    isConnected = false;
+                    updateConnectionStatus('error');
+                    showToast('error', 'Tables Missing', 'Database tables need to be created');
+                    return;
+                }
+
+                if (error) throw error;
+
+                isConnected = true;
+                updateConnectionStatus('connected');
+            } catch (error) {
+                isConnected = false;
+                updateConnectionStatus('error');
+                console.error('Database connection failed:', error);
+            }
+        }
+
+        // Load user goals (filtered by user_id)
+        async function loadUserGoals() {
+            try {
+                const { data, error } = await supabase
+                    .from('user_goals')
+                    .select('daily_calories, daily_protein, daily_carbs, daily_fat')
+                    .eq('user_id', currentUser.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    throw error;
+                }
+
+                if (data) {
+                    DAILY_GOALS = {
+                        calories: data.daily_calories,
+                        protein: data.daily_protein,
+                        carbs: data.daily_carbs,
+                        fat: data.daily_fat
+                    };
+                }
+
+                populateGoalsForm();
+            } catch (error) {
+                console.error('Error loading goals:', error);
+            }
+        }
+
+        // Save user goals (with user_id)
+        async function saveUserGoals() {
+            try {
+                const goalsData = {
+                    user_id: currentUser.id,
+                    daily_calories: parseInt($('goalCalories').value) || 2000,
+                    daily_protein: parseInt($('goalProtein').value) || 150,
+                    daily_carbs: parseInt($('goalCarbs').value) || 200,
+                    daily_fat: parseInt($('goalFat').value) || 65,
+                    updated_at: new Date().toISOString()
+                };
+
+                const { data, error } = await supabase
+                    .from('user_goals')
+                    .upsert(goalsData, { onConflict: 'user_id' });
+
+                if (error) throw error;
+
+                DAILY_GOALS = {
+                    calories: goalsData.daily_calories,
+                    protein: goalsData.daily_protein,
+                    carbs: goalsData.daily_carbs,
+                    fat: goalsData.daily_fat
+                };
+
+                updateTotalsDisplay();
+                toggleGoalsSettings();
+                showToast('success', 'Goals Saved', 'Your daily goals have been updated');
+            } catch (error) {
+                console.error('Error saving goals:', error);
+                showToast('error', 'Save Failed', error.message);
+            }
+        }
+
+        // Load today's totals (filtered by user_id)
+        async function loadTodaysTotals() {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+
+                const { data, error } = await supabase
+                    .from('food_log')
+                    .select('calories, protein, carbs, fat')
+                    .eq('user_id', currentUser.id)
+                    .eq('date', today);
+
+                if (error) throw error;
+
+                dailyTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+                data.forEach(entry => {
+                    dailyTotals.calories += parseFloat(entry.calories) || 0;
+                    dailyTotals.protein += parseFloat(entry.protein) || 0;
+                    dailyTotals.carbs += parseFloat(entry.carbs) || 0;
+                    dailyTotals.fat += parseFloat(entry.fat) || 0;
+                });
+
+                updateTotalsDisplay();
+            } catch (error) {
+                console.error('Error loading totals:', error);
+            }
+        }
+
+        // Load today's entries (filtered by user_id)
+        async function loadTodaysEntries() {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+
+                const { data, error } = await supabase
+                    .from('food_log')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('date', today)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
+
+                todaysEntries = data;
+                updateHistoryDisplay();
+            } catch (error) {
+                console.error('Error loading entries:', error);
+            }
+        }
+
+        // Load favorites (filtered by user_id)
+        async function loadFavorites() {
+            try {
+                const { data, error } = await supabase
+                    .from('favorites')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('use_count', { ascending: false });
+
+                if (error) throw error;
+
+                favorites = data;
+                displayFavorites();
+            } catch (error) {
+                console.error('Error loading favorites:', error);
+            }
+        }
+
+        // Handle form submission (with user_id)
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+
+            if (!validateForm()) return;
+
+            const formData = getFormData();
+            const submitBtn = $('submitBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const { data, error } = await supabase
+                    .from('food_log')
+                    .insert([{
+                        ...formData,
+                        user_id: currentUser.id
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                showSuccessAnimation();
+                await loadTodaysTotals();
+                await loadTodaysEntries();
+
+                showToast('success', 'Entry Logged!', 'Saved to database');
+
+                setTimeout(() => {
+                    $('nutritionForm').reset();
+                }, 1500);
+
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('error', 'Save Failed', error.message);
+            } finally {
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Log Entry';
+                    submitBtn.classList.remove('success');
+                }, 2000);
+            }
+        }
+
+        // Save as favorite (with user_id)
+        async function saveAsFavorite() {
+            const calories = parseFloat($('calories').value) || 0;
+            const protein = parseFloat($('protein').value) || 0;
+            const carbs = parseFloat($('carbs').value) || 0;
+            const fat = parseFloat($('fat').value) || 0;
+            const description = $('description').value.trim();
+
+            if (!calories && !protein && !carbs && !fat) {
+                showToast('error', 'No Data', 'Enter nutrition values first');
+                return;
+            }
+
+            const name = prompt('Name this favorite:', description || 'My Favorite');
+            if (!name) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('favorites')
+                    .insert([{
+                        user_id: currentUser.id,
+                        name: name,
+                        calories: calories,
+                        protein: protein,
+                        carbs: carbs,
+                        fat: fat,
+                        meal_type: $('mealType').value,
+                        description: description,
+                        category: $('mealType').value
+                    }]);
+
+                if (error) throw error;
+
+                await loadFavorites();
+                showToast('success', 'Favorite Saved', `"${name}" added to favorites`);
+            } catch (error) {
+                console.error('Error saving favorite:', error);
+                showToast('error', 'Save Failed', error.message);
+            }
+        }
+
+        // Delete entry (with user_id check)
+        async function deleteEntry(entryId) {
+            if (!confirm('Delete this entry?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('food_log')
+                    .delete()
+                    .eq('id', entryId)
+                    .eq('user_id', currentUser.id);
+
+                if (error) throw error;
+
+                await loadTodaysTotals();
+                await loadTodaysEntries();
+                showToast('info', 'Deleted', 'Entry removed');
+            } catch (error) {
+                console.error('Error deleting entry:', error);
+                showToast('error', 'Delete Failed', error.message);
+            }
+        }
+
+        // Delete favorite (with user_id check)
+        async function deleteFavorite(favoriteId) {
+            if (!confirm('Delete this favorite?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('favorites')
+                    .delete()
+                    .eq('id', favoriteId)
+                    .eq('user_id', currentUser.id);
+
+                if (error) throw error;
+
+                await loadFavorites();
+                showToast('info', 'Deleted', 'Favorite removed');
+            } catch (error) {
+                console.error('Error deleting favorite:', error);
+                showToast('error', 'Delete Failed', error.message);
+            }
+        }
+
+        // Setup real-time subscriptions (filtered by user_id)
+        function setupRealtimeSubscriptions() {
+            supabase
+                .channel('food_log_changes')
+                .on('postgres_changes',
+                    { 
+                        event: '*', 
+                        schema: 'public', 
+                        table: 'food_log',
+                        filter: `user_id=eq.${currentUser.id}`
+                    },
+                    async (payload) => {
+                        await loadTodaysTotals();
+                        await loadTodaysEntries();
+                    }
+                )
+                .subscribe();
+
+            supabase
+                .channel('favorites_changes')
+                .on('postgres_changes',
+                    { 
+                        event: '*', 
+                        schema: 'public', 
+                        table: 'favorites',
+                        filter: `user_id=eq.${currentUser.id}`
+                    },
+                    async (payload) => {
+                        await loadFavorites();
+                    }
+                )
+                .subscribe();
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        function getFormData() {
+            return {
+                calories: parseFloat($('calories').value) || 0,
+                protein: parseFloat($('protein').value) || 0,
+                carbs: parseFloat($('carbs').value) || 0,
+                fat: parseFloat($('fat').value) || 0,
+                meal_type: $('mealType').value,
+                description: $('description').value.trim(),
+                date: new Date().toISOString().split('T')[0]
+            };
+        }
+
+        function validateForm() {
+            const calories = parseFloat($('calories').value) || 0;
+            const protein = parseFloat($('protein').value) || 0;
+            const carbs = parseFloat($('carbs').value) || 0;
+            const fat = parseFloat($('fat').value) || 0;
+
+            if (calories === 0 && protein === 0 && carbs === 0 && fat === 0) {
+                showToast('error', 'Empty Entry', 'Please enter at least one value');
+                return false;
+            }
+
+            return true;
+        }
+
+        function populateGoalsForm() {
+            $('goalCalories').value = DAILY_GOALS.calories;
+            $('goalProtein').value = DAILY_GOALS.protein;
+            $('goalCarbs').value = DAILY_GOALS.carbs;
+            $('goalFat').value = DAILY_GOALS.fat;
+        }
+
+        function toggleGoalsSettings() {
+            const section = $('goalsSection');
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                populateGoalsForm();
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+
+        function stepGoalValue(field, amount) {
+            const input = $(field);
+            const current = parseInt(input.value) || 0;
+            input.value = Math.max(input.min || 0, current + amount);
+        }
+
+        function stepValue(field, amount) {
+            const input = $(field);
+            const current = parseFloat(input.value) || 0;
+            input.value = Math.max(0, current + amount);
+            updateMacroCalculation();
+        }
+
+        function updateTotalsDisplay() {
+            $('totalCalories').textContent = Math.round(dailyTotals.calories);
+            $('totalProtein').textContent = Math.round(dailyTotals.protein) + 'g';
+            $('totalCarbs').textContent = Math.round(dailyTotals.carbs) + 'g';
+            $('totalFat').textContent = Math.round(dailyTotals.fat) + 'g';
+
+            updateRemainingAmount('remainingCalories', dailyTotals.calories, DAILY_GOALS.calories, '');
+            updateRemainingAmount('remainingProtein', dailyTotals.protein, DAILY_GOALS.protein, 'g');
+            updateRemainingAmount('remainingCarbs', dailyTotals.carbs, DAILY_GOALS.carbs, 'g');
+            updateRemainingAmount('remainingFat', dailyTotals.fat, DAILY_GOALS.fat, 'g');
+
+            updateProgressBar('caloriesProgress', dailyTotals.calories, DAILY_GOALS.calories);
+            updateProgressBar('proteinProgress', dailyTotals.protein, DAILY_GOALS.protein);
+            updateProgressBar('carbsProgress', dailyTotals.carbs, DAILY_GOALS.carbs);
+            updateProgressBar('fatProgress', dailyTotals.fat, DAILY_GOALS.fat);
+        }
+
+        function updateRemainingAmount(elementId, current, goal, unit) {
+            const element = $(elementId);
+            const remaining = goal - current;
+            
+            if (remaining > 0) {
+                element.textContent = `${Math.round(remaining)}${unit} left`;
+                element.className = 'remaining-amount';
+            } else if (remaining === 0) {
+                element.textContent = `Goal reached!`;
+                element.className = 'remaining-amount complete';
+            } else {
+                element.textContent = `${Math.round(Math.abs(remaining))}${unit} over`;
+                element.className = 'remaining-amount over';
+            }
+        }
+
+        function updateProgressBar(elementId, current, goal) {
+            const percentage = Math.min((current / goal) * 100, 100);
+            $(elementId).style.width = percentage + '%';
+        }
+
+        function updateHistoryDisplay() {
+            const container = $('historyContainer');
+            container.innerHTML = '';
+
+            if (!todaysEntries.length) {
+                container.innerHTML = '<p style="text-align: center; color: #a0a0a0; padding: 20px;">No entries today</p>';
+                return;
+            }
+
+            todaysEntries.forEach(entry => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `
+                    <div class="history-header">
+                        <div>
+                            <strong>${entry.meal_type}</strong>
+                            ${entry.description ? `<div style="font-size: 11px; color: #a0a0a0; margin-top: 2px;">${entry.description}</div>` : ''}
+                        </div>
+                        <span class="history-time">${formatTime(entry.created_at)}</span>
+                    </div>
+                    <div class="history-details">
+                        <div class="history-macro">
+                            <div class="history-macro-value">${Math.round(entry.calories)}</div>
+                            <div class="history-macro-label">Cal</div>
+                        </div>
+                        <div class="history-macro">
+                            <div class="history-macro-value">${Math.round(entry.protein)}g</div>
+                            <div class="history-macro-label">Pro</div>
+                        </div>
+                        <div class="history-macro">
+                            <div class="history-macro-value">${Math.round(entry.carbs)}g</div>
+                            <div class="history-macro-label">Carbs</div>
+                        </div>
+                        <div class="history-macro">
+                            <div class="history-macro-value">${Math.round(entry.fat)}g</div>
+                            <div class="history-macro-label">Fat</div>
+                        </div>
+                    </div>
+                    <button class="history-delete" onclick="deleteEntry(${entry.id})">Delete</button>
+                `;
+
+                container.appendChild(div);
+            });
+        }
+
+        function displayFavorites() {
+            const grid = $('favoritesGrid');
+            grid.innerHTML = '';
+
+            if (favorites.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #a0a0a0; padding: 20px;">No favorites yet. Save entries to build your collection!</div>';
+                return;
+            }
+
+            favorites.forEach(fav => {
+                const btn = document.createElement('button');
+                btn.className = 'favorite-btn';
+                btn.innerHTML = `
+                    <div class="favorite-name">${fav.name}</div>
+                    <div class="favorite-macros">${Math.round(fav.calories)}cal • ${Math.round(fav.protein)}p • ${Math.round(fav.carbs)}c • ${Math.round(fav.fat)}f</div>
+                    <button class="delete-favorite" onclick="event.stopPropagation(); deleteFavorite(${fav.id})">×</button>
+                `;
+                btn.onclick = () => loadFavorite(fav);
+                grid.appendChild(btn);
+            });
+        }
+
+        function loadFavorite(favorite) {
+            $('calories').value = favorite.calories;
+            $('protein').value = favorite.protein;
+            $('carbs').value = favorite.carbs;
+            $('fat').value = favorite.fat;
+            $('mealType').value = favorite.meal_type;
+            $('description').value = favorite.description || '';
+
+            updateMacroCalculation();
+            showToast('success', 'Loaded', `"${favorite.name}" loaded into form`);
+        }
+
+        function updateMacroCalculation() {
+            // Simple macro calculation display
+            const protein = parseFloat($('protein').value) || 0;
+            const carbs = parseFloat($('carbs').value) || 0;
+            const fat = parseFloat($('fat').value) || 0;
+            const calculatedCals = (protein * 4) + (carbs * 4) + (fat * 9);
+
+            if (calculatedCals > 0 && !$('calories').value) {
+                $('calories').value = Math.round(calculatedCals);
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const dot = $('statusDot');
+            const text = $('statusText');
+
+            switch(status) {
+                case 'connected':
+                    dot.className = 'status-dot connected';
+                    text.textContent = 'Connected';
+                    break;
+                case 'error':
+                    dot.className = 'status-dot error';
+                    text.textContent = 'Connection Error';
+                    break;
+                default:
+                    dot.className = 'status-dot';
+                    text.textContent = 'Connecting...';
+            }
+        }
+
+        function showSuccessAnimation() {
+            const btn = $('submitBtn');
+            btn.classList.add('success');
+            btn.innerHTML = '<span class="success-checkmark">✓</span>';
+
+            setTimeout(() => {
+                btn.innerHTML = 'Entry Logged!';
+            }, 500);
+        }
+
+        function updateDateDisplay() {
+            const now = new Date();
+            const options = { weekday: 'long', month: 'long', day: 'numeric' };
+            $('dateDisplay').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function showToast(type, title, message, duration = 3000) {
+            if (toastCount >= 2) return;
+
+            toastCount++;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icons = {
+                success: '✓',
+                error: '✗',
+                info: 'ℹ',
+                warning: '⚠'
+            };
+
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <div>
+                    <div class="toast-title">${title}</div>
+                    <div style="font-size: 11px; color: #a0a0a0;">${message}</div>
+                </div>
+            `;
+
+            $('toastContainer').appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            setTimeout(() => {
+                toast.style.animation = 'slideInRight 0.2s ease reverse';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                    toastCount--;
+                }, 200);
+            }, duration);
+        }
+
+        // Initialize event listeners on page load
+        setupEventListeners();
+
+        // Make functions global for onclick handlers
+        window.showAuthForm = showAuthForm;
+        window.showPasswordReset = showPasswordReset;
+        window.signInWithGoogle = signInWithGoogle;
+        window.signInWithApple = signInWithApple;
+        window.signOut = signOut;
+        window.toggleGoalsSettings = toggleGoalsSettings;
+        window.stepGoalValue = stepGoalValue;
+        window.stepValue = stepValue;
+        window.saveAsFavorite = saveAsFavorite;
+        window.deleteFavorite = deleteFavorite;
+        window.deleteEntry = deleteEntry;
+    </script>
+</body>
+</html>
